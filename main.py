@@ -13,7 +13,7 @@ if __name__ == "__main__":
     TARGET_POS_X, TARGET_POS_Y = 0, -10
     target_initial_distance = np.sqrt((TARGET_POS_X ** 2) + (TARGET_POS_Y ** 2))
 
-    experiment_id = 32
+    experiment_id = 35
     SUCCESS_RADIUS = 5  # 15m close to reward
     MAX_EPOCH = 5e6
     MAX_TIME = 50  # secs
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     # %%
 
     mCar = mSimulationCar()
-    training_flag = False
+    training_flag = True
 
     if not training_flag:
         MAX_TIME = 500
@@ -58,7 +58,7 @@ if __name__ == "__main__":
     print("Starting")
     agent = Agent(gamma, tau, actorlr, criticlr, variance, action_dim, int(mem_size), batch_size, state_dim, reward_dim,
                   eps_dec)
-    agent.load_models(70200, 31)
+    #agent.load_models(70200, 31)
 
     # agent.load_models(42000,253)
 
@@ -107,8 +107,8 @@ if __name__ == "__main__":
 
             agent_action = agent.action_selection(state_torch_tensor.float())
             car_steering_old += agent_action / 10
-            car_steering_old = min(car_steering_old, 1)
-            car_steering_old = max(car_steering_old, -1)
+            car_steering_old = min(car_steering_old, 0.75)
+            car_steering_old = max(car_steering_old, -0.75)
             # print("steering  angle" , car_steering_old)
             mCar.car_api_control_steer(car_steering_old, action_duration)
             steering_que.append(car_steering_old)
@@ -134,8 +134,7 @@ if __name__ == "__main__":
                 ####
 
             # update network
-            reward_tensor = torch.tensor(
-                [-0.075, current_cosine_reward / 2, (isCollidedFlag or time_pounishmet_flag) * (-200), success * 400,
+            reward_tensor = torch.tensor([-0.075, current_cosine_reward / 2000, (isCollidedFlag or time_pounishmet_flag) * (-200), success * 400,
                  temp_circle_reward * 25, isClear_flag * -1])
             # print(f"CCS: {current_cosine_reward}, TSR:  {temp_circle_reward*25},  ICR:{isClear_flag*-1}")
 

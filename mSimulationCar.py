@@ -17,8 +17,7 @@ import torch
 
 
 class mSimulationCar:
-    
-    def __init__(self,api_control = True):
+    def __init__(self, api_control=True):
         self.client = airsim.CarClient()
         self.client.confirmConnection()
         self.client.enableApiControl(api_control)
@@ -154,7 +153,8 @@ class mSimulationCar:
             orientation_euler_x,orientation_euler_y,orientation_euler_z = self.quaternion_to_eularian_angles(orientation_quaternion)
             
             self.mCar_orientation.append([orientation_euler_z / np.pi * 180])
-            
+
+
             if self.client.simGetCollisionInfo().has_collided:
                 self.has_collided_flag = 1
             
@@ -171,38 +171,10 @@ class mSimulationCar:
             #print("Current Orientation:                 %.1f degrees" % (orientation_euler_z / np.pi * 180))
             #print("has_collided:                       " , self.client.simGetCollisionInfo().has_collided)
             self.mcurrentSimOutput = self.neural_network_output(t ,pos.x_val , pos.y_val , orientation_euler_z,self.has_collided_flag)
-            # self.save_current_state_TXT(self.mcurrentSimOutput)            
-            
-            #print()
-            
-            
+
             self.current_time = t
             
-            # #control if car is controlled by keyboard
-            # if key == 119:                
-            #     if not self.mutex_Flag:
-            #         #print("Forward")
-            #         self.go_forward(self.control_timestamp)
-            # elif key == 100:
-            #     if not self.mutex_Flag:
-            #         #print("Right")
-            #         self.go_steer(0.9, self.control_timestamp)
-            # elif key == 97:
-            #     if not self.mutex_Flag:
-            #         #print("Left")
-            #         self.go_steer(-0.9, self.control_timestamp)
-            # elif key == 115:
-            #     if not self.mutex_Flag:
-            #         #print("Brake")
-            #         self.go_brake(self.control_timestamp)
-            # elif key == 27:
-            #     print( "Exiting", key)
-            #     cv2.destroyAllWindows()-80.66       -80.33  
-                
-            # elif key == 98:                
-            #     if not self.mutex_Flag:
-            #         print("Emergency Stop")
-            #         self.emergency_stop(self.control_timestamp)
+
             
             if self.car_api_control_steer_flag:
                 if not self.mutex_Flag:
@@ -529,11 +501,17 @@ class mSimulationCar:
         
         middle_lidar_point = car_pos_lidar_data[64:124]
         
-        sum_middle_lidar = 1 - (np.sum(middle_lidar_point) / 60)
-        
+        is_clear = (np.max(middle_lidar_point))
+
+        new_is_collided = np.where(lidar_data_sampled > 0.89)
+        if new_is_collided[0].size == 0:
+            isCollidedFlag = False or isCollidedFlag
+        else:
+            isCollidedFlag = True
         # closest_point = min( 1 - middle_lidar_point)
         # is_clear = closest_point < 0.2
-        is_clear = 2 * (1 - sum_middle_lidar)
+
+
 
         return state_numpy , state_tensor , curr_x, curr_y , curr_heading , isCollidedFlag, is_clear
     

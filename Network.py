@@ -12,7 +12,7 @@ class ActorNetwork(nn.Module):
         self.second = nn.Linear(input_out, layer1_dims)
         
         # self.second.weight.data.normal_(0,0.01)
-        self.third = nn.Linear(layer1_dims ,128 )
+        self.third = nn.Linear(layer1_dims, 128)
         
         self.last = nn.Linear(128, action_space)
         # self.last.weight.data.normal_(0,0.01)
