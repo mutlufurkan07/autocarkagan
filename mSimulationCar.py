@@ -17,8 +17,12 @@ import torch
 
 
 class mSimulationCar:
-    def __init__(self, api_control=True):
+    def __init__(self, api_control=False):
         self.client = airsim.CarClient()
+        kll = self.client.simGetGroundTruthEnvironment(vehicle_name="PhysXCar")
+
+        self.client.simSetObjectScale("PhysXCar", airsim.Vector3r(1, 1.16, 1))
+
         self.client.confirmConnection()
         self.client.enableApiControl(api_control)
         self.car_controls = airsim.CarControls()
@@ -30,7 +34,7 @@ class mSimulationCar:
         self.current_speed = 0
         self.max_throttle = 5
         self.max_brake = 1
-        self.max_speed = 10 /3.6 #10km/h
+        self.max_speed = 4 # 4m/s
         self.mFrame = np.zeros((256, 256, 1), dtype = "uint8")
         self.mutex_Flag = False
         self.control_timestamp = 0.04 #control car for every 40 msecs
@@ -352,7 +356,7 @@ class mSimulationCar:
         
         if (len(self.current_LidarData.point_cloud) < 3):
             print("\tNo points received from Lidar data")
-            return np.ones(180) * 32 + np.random.normal(0,0.08 , (180))
+            return np.ones(180) * 160 + np.random.normal(0,0.08 , (180))
         else:
             points = self.parse_lidarData(self.current_LidarData)
                         
@@ -361,10 +365,10 @@ class mSimulationCar:
             dist = np.sqrt(all_X*all_X+all_Y*all_Y)
             at2 = np.arctan2(all_Y,all_X)*180/np.pi
             at2= np.around(at2).astype(int)
-            vector = np.ones(180) * 32
+            vector = np.ones(180) * 160
             vector[at2-1] = dist
             ret_arr = np.flip(vector) 
-            ret_arr = 255 - ((ret_arr / 32) * 255)
+            ret_arr = 255 - ((ret_arr / 160) * 255)
             ret_arr += np.random.normal(0,0.1 , ret_arr.shape)
             if(visualize):
                 cv_arr = np.zeros((80,180),np.uint8)
@@ -394,8 +398,8 @@ class mSimulationCar:
              # plt.show()            
              
             
-             points[:,1] = points[:,1] + 3200
-             points = points / 8
+             points[:,1] = points[:,1] + 16000
+             points = points / 40
                       
              points = points.astype(int)
              if(visualize):
@@ -411,7 +415,7 @@ class mSimulationCar:
                          
                      if point_y < 400:
                          frame = cv2.circle(frame, (points[ii,1],point_y), 5, (127,0,0), -1)
-                 frame = cv2.circle(frame, (400,400), 20, (50,0,0), 2)
+                 frame = cv2.circle(frame, (400,400), 5, (50,0,0), 2)
                  cv2.imshow("Car Lidar_opencv", frame)                 
                  #cv2.waitKey(1)
                      
@@ -502,12 +506,16 @@ class mSimulationCar:
         middle_lidar_point = car_pos_lidar_data[64:124]
         
         is_clear = (np.max(middle_lidar_point))
+        """
+        validation = True
+        if not validation:
+            new_is_collided = np.where(lidar_data_sampled > 0.905)
+            if new_is_collided[0].size == 0:
+                isCollidedFlag = False or isCollidedFlag
+            else:
+                isCollidedFlag = True
+        """
 
-        new_is_collided = np.where(lidar_data_sampled > 0.89)
-        if new_is_collided[0].size == 0:
-            isCollidedFlag = False or isCollidedFlag
-        else:
-            isCollidedFlag = True
         # closest_point = min( 1 - middle_lidar_point)
         # is_clear = closest_point < 0.2
 
