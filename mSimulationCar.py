@@ -17,7 +17,7 @@ import torch
 
 
 class mSimulationCar:
-    def __init__(self, api_control=False):
+    def __init__(self, api_control=True):
         self.client = airsim.CarClient()
         kll = self.client.simGetGroundTruthEnvironment(vehicle_name="PhysXCar")
 
@@ -356,7 +356,7 @@ class mSimulationCar:
         
         if (len(self.current_LidarData.point_cloud) < 3):
             print("\tNo points received from Lidar data")
-            return np.ones(180) * 160 + np.random.normal(0,0.08 , (180))
+            return np.ones(180) * 112 + np.random.normal(0,0.08 , (180))
         else:
             points = self.parse_lidarData(self.current_LidarData)
                         
@@ -365,10 +365,10 @@ class mSimulationCar:
             dist = np.sqrt(all_X*all_X+all_Y*all_Y)
             at2 = np.arctan2(all_Y,all_X)*180/np.pi
             at2= np.around(at2).astype(int)
-            vector = np.ones(180) * 160
+            vector = np.ones(180) * 112
             vector[at2-1] = dist
             ret_arr = np.flip(vector) 
-            ret_arr = 255 - ((ret_arr / 160) * 255)
+            ret_arr = 255 - ((ret_arr / 112) * 255)
             ret_arr += np.random.normal(0,0.1 , ret_arr.shape)
             if(visualize):
                 cv_arr = np.zeros((80,180),np.uint8)
@@ -398,7 +398,7 @@ class mSimulationCar:
              # plt.show()            
              
             
-             points[:,1] = points[:,1] + 16000
+             points[:,1] = points[:,1] + 11200
              points = points / 40
                       
              points = points.astype(int)
