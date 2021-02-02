@@ -9,24 +9,17 @@ import collections
 
 if __name__ == "__main__":
     # Simulation params
-    action_duration = 0.025  # secs
+    action_duration = 0.01  # secs
     # NURİ BOMBASI
     TARGET_POS_X, TARGET_POS_Y = 0, 50
     target_initial_distance = np.sqrt((TARGET_POS_X ** 2) + (TARGET_POS_Y ** 2))
 
-    experiment_id = 45
-    SUCCESS_RADIUS = 5  # 5m close to reward
-    MAX_EPOCH = 5e6
-    MAX_TIME = 50  # secs
-    gamma = 0.995
-    tau = 0.001
-    actorlr = 1e-5
-    criticlr = 1e-4
     std = 0.1
     noise_mag = 0.5
     max_action = 1  # max steering
+    experiment_id = 1
 
-    experiment_id = 42
+
     SUCCESS_RADIUS = 5  # 15m close to reward
     MAX_EPOCH = 5e6
     MAX_TIME = 50  # secs
@@ -56,9 +49,9 @@ if __name__ == "__main__":
     # mCar.createFolder() #call this to save the data to a text file ./data/....txt
     print("Starting")
     agent = Agent(gamma, tau, actorlr, criticlr, std, action_dim, int(mem_size), batch_size, state_dim, reward_dim,
-                   noise_mag, max_action,training_flag, wd3_beta, 0.2)
+                   noise_mag, max_action,training_flag, wd3_beta, 0.2, experiment_id)
 
-    # agent.load_models(46200, 42)
+    agent.load_models(38050, 42)
     car_x = 0
     car_y = 0
 

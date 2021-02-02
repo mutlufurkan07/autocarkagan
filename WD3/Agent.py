@@ -5,11 +5,16 @@ import torch.optim as optim
 import copy
 import torch
 import torch.nn as nn
+import os
 
 
 class Agent:
     def __init__(self, gamma, tau, actorlr, criticlr, std, action_dim, mem_size, batch_size, state_dim, reward_dim,
-                 noise_mag, max_action, training_or_validation, beta, target_noise_mag):
+                 noise_mag, max_action, training_or_validation, beta, target_noise_mag, experiment_id):
+
+        self.path = "model_params_wd3/" + str(experiment_id)
+        if not os.path.exists(self.path):
+            os.mkdir(self.path)
         self.memory = Memory(mem_size=mem_size, batch_size=batch_size, state_dim=state_dim,
                              action_dim=action_dim, reward_dim=reward_dim)
         self.action_dim = action_dim
@@ -130,17 +135,17 @@ class Agent:
 
     def save_models(self, episode, id):
 
-        torch.save(self.actor.state_dict(), f"model_params_wd3/{id}_{episode}_actor.pth")
-        torch.save(self.actor_target.state_dict(), f"model_params_wd3/{id}_{episode}_actortarget.pth")
-        torch.save(self.critic1.state_dict(), f"model_params_wd3/{id}_{episode}_critic.pth")
-        torch.save(self.critic1_target.state_dict(), f"model_params_wd3/{id}_{episode}_critictarget.pth")
+        torch.save(self.actor.state_dict(), f"{self.path}/{id}_{episode}_actor.pth")
+        torch.save(self.actor_target.state_dict(), f"{self.path}/{id}_{episode}_actortarget.pth")
+        torch.save(self.critic1.state_dict(), f"{self.path}/{id}_{episode}_critic.pth")
+        torch.save(self.critic1_target.state_dict(), f"{self.path}/{id}_{episode}_critictarget.pth")
 
     def load_models(self, episode, id):
 
-        self.actor.load_state_dict(torch.load(f"model_params_wd3/{id}_{episode}_actor.pth", map_location=self.device))
+        self.actor.load_state_dict(torch.load(f"{self.path}/{id}_{episode}_actor.pth", map_location=self.device))
         self.actor_target.load_state_dict(
-            torch.load(f"model_params_wd3/{id}_{episode}_actortarget.pth", map_location=self.device))
+            torch.load(f"{self.path}/{id}_{episode}_actortarget.pth", map_location=self.device))
         self.critic1.load_state_dict(
-            torch.load(f"model_params_wd3/{id}_{episode}_critic.pth", map_location=self.device))
+            torch.load(f"{self.path}/{id}_{episode}_critic.pth", map_location=self.device))
         self.critic1_target.load_state_dict(
-            torch.load(f"model_params_wd3/{id}_{episode}_critictarget.pth", map_location=self.device))
+            torch.load(f"{self.path}/{id}_{episode}_critictarget.pth", map_location=self.device))

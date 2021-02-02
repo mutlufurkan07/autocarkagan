@@ -36,7 +36,7 @@ class mSimulationCar:
         self.max_speed = 4  # 4m/s
         self.mFrame = np.zeros((256, 256, 1), dtype="uint8")
         self.mutex_Flag = False
-        self.control_timestamp = 0.025  # control car for every 40 msecs
+        self.control_timestamp = 0.01  # control car for every 40 msecs
         self.lidar_range = 32
         self.mCar_state = []
         self.RGB_image = []
