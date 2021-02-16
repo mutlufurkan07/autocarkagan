@@ -1,0 +1,2 @@
+Epoch num0   Step_len: 26   Epoch Reward: -67.10494221536854 Memory index: 26Success: 0 Time since beginning -0.0327824076016744
+Epoch num1   Step_len: 14   Epoch Reward: -291.3061187588406 Memory index: 40Success: 0 Time since beginning -0.04268374840418498

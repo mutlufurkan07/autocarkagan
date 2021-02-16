@@ -20,18 +20,18 @@ class Agent:
         # self.reward_weights = torch.zeros(reward_dim)
         self.curr_reward = 0
 
-        self.actor = ActorNetwork(input_dims=state_dim, input_out=256, layer1_dims=128, layer2_dims=128, layer3_dims=64,
+        self.actor = ActorNetwork(input_dims=state_dim, input_out=256, layer1_dims=128, layer2_dims=128, layer3_dims=128,
                                   action_space=action_dim)
         self.actor_target = ActorNetwork(input_dims=state_dim, input_out=256, layer1_dims=128, layer2_dims=128,
-                                         layer3_dims=64, action_space=action_dim)
+                                         layer3_dims=128, action_space=action_dim)
 
         self.actor.load_state_dict(self.actor_target.state_dict())
         self.actor_optimizer = optim.Adam(params=self.actor.parameters(), lr=actorlr)
 
-        self.critic = CriticNetwork(input_dims=state_dim, action_dims=action_dim, input_out=128, layer1_dims=64,
-                                    layer2_dims=64)
-        self.critic_target = CriticNetwork(input_dims=state_dim, action_dims=action_dim, input_out=128, layer1_dims=64,
-                                           layer2_dims=64)
+        self.critic = CriticNetwork(input_dims=state_dim, action_dims=action_dim, input_out=128, layer1_dims=128,
+                                    layer2_dims=128)
+        self.critic_target = CriticNetwork(input_dims=state_dim, action_dims=action_dim, input_out=128, layer1_dims=128,
+                                           layer2_dims=128)
 
         self.critic.load_state_dict(self.critic_target.state_dict())
         self.critic_optimizer = optim.Adam(params=self.critic.parameters(), lr=criticlr)

@@ -17,7 +17,8 @@ import torch
 
 class mSimulationCar:
     def __init__(self, api_control=True):
-        self.client = airsim.CarClient()
+
+        self.client = airsim.CarClient(port=41451)
         # ground_truth_env = self.client.simGetGroundTruthEnvironment(vehicle_name="PhysXCar")
 
         self.client.simSetObjectScale("PhysXCar", airsim.Vector3r(1, 1.4, 1))

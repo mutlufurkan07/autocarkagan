@@ -6,10 +6,14 @@ from Agent import Agent
 from mSimulationCar import mSimulationCar
 import collections
 
+# torch.backends.cudnn.benchmark = True
+
 
 if __name__ == "__main__":
     # Simulation params
-    action_duration = 0.025  # secs
+    sim_clock_speed = 5
+    action_duration = 1e-8/(sim_clock_speed*10)  # secs
+    print(f"Action Duration: {action_duration*1000} msec")
     TARGET_POS_X, TARGET_POS_Y = 0, 50
     target_initial_distance = np.sqrt((TARGET_POS_X ** 2) + (TARGET_POS_Y ** 2))
 
@@ -21,9 +25,9 @@ if __name__ == "__main__":
     tau = 0.01
     actorlr = 2e-5
     criticlr = 2e-4
-    variance = 0.1
+    variance = 0.2
     action_dim = 1
-    mem_size = 1e6  # 80000
+    mem_size = 4e5  # 80000
     batch_size = 64
     reward_dim = 6
     state_dim = 245
@@ -73,7 +77,7 @@ if __name__ == "__main__":
         state_torch_tensor = torch.cat((state_torch_tensor, torch.tensor(steering_que)))
         current_cosine_reward = mCar.car_cosineReward(TARGET_POS_X, TARGET_POS_Y, curr_x, curr_y, curr_heading)
         state_torch_tensor = state_torch_tensor.to(device)
-
+        st = time.time()
         while 1:
             # check success condition first
             if np.sqrt((curr_x - TARGET_POS_X) ** 2 + (curr_y - TARGET_POS_Y) ** 2) < SUCCESS_RADIUS:
@@ -85,8 +89,8 @@ if __name__ == "__main__":
             agent_action = agent.action_selection(state_torch_tensor.float())
 
             car_steering_old += agent_action / 10
-            car_steering_old = min(car_steering_old, 0.62)
-            car_steering_old = max(car_steering_old, -0.62)
+            car_steering_old = min(car_steering_old, 0.5)
+            car_steering_old = max(car_steering_old, -0.5)
             # print("steering  angle" , car_steering_old)
             mCar.car_api_control_steer(car_steering_old, action_duration)
             steering_que.append(car_steering_old)
@@ -116,7 +120,8 @@ if __name__ == "__main__":
             if training_flag:
                 agent.learn(state_torch_tensor, agent_action, reward_tensor, new_state_torch_tensor, isCollidedFlag)
             else:
-                time.sleep(0.003)
+                pass
+                #time.sleep(action_duration)
 
             # DONMEK KOTUDUR ve düz gitmek iyidir
             if np.abs(agent_action) < 0.25:
@@ -127,13 +132,20 @@ if __name__ == "__main__":
             step_len += 1
             # if time_current >= MAX_TIME or done or (success == 10):
             if time_punishment_flag or isCollidedFlag or success:
+                q1 = agent.critic(state_torch_tensor.view(1, 245).float(),
+                                   torch.tensor(agent_action).view(1, 1).to(device).float())
+
                 average_reward_list.append(epoch_reward)
                 avg_reward = sum(average_reward_list) / len(average_reward_list)
                 tot_step += step_len
                 average_success_list.append(success)
                 avg_success = sum(average_success_list) / len(average_success_list)
+                tt = time.time()
                 print(
-                    f"Episode: {epoch} , Reward: {epoch_reward.item():.3f} , Avg Reward: {avg_reward.item():.3f}  AvgSuccss: {avg_success*100:.2f}%, Success: {success} , Step Len: {step_len}  , Total Steps: {tot_step}")
+                    f"Episode: {epoch} , Reward: {epoch_reward.item():.3f} , Avg Reward: {avg_reward.item():.3f}  "
+                    f"AvgSuccss: {avg_success*100:.2f}%, Success: {success} , Step Len: {step_len}  ,"
+                    f" Total Steps: {tot_step} Time: {((tt - st) * 1000 / step_len):.3f}  msecs  "
+                    f"Last Q-Value: {q1.item():8.2f}")
 
                 mCar.randomly_initiate_states()
                 car_x = mCar.xx
@@ -163,6 +175,10 @@ if __name__ == "__main__":
             curr_heading = new_curr_heading
             isClear_flag = isClear_flag_new
 
+
+
+
+
         if training_flag:
             if epoch % 200 == 0:
                 agent.save_models(epoch, experiment_id)
@@ -173,6 +189,7 @@ if __name__ == "__main__":
                 epoch_reward.item()) + " Memory index: " + str(agent.memory.mem_index) + "Success: " + str(
                 success) + " Time since beginning " + str(elapsed_since_training_start) + "\n")
             f.close()
+
 
     mCar.write_Pose_OrientTXT()
     input("Enter to exit...")
