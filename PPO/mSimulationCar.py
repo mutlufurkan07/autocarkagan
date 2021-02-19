@@ -21,7 +21,7 @@ class mSimulationCar:
         self.client = airsim.CarClient(port=41451)
         # ground_truth_env = self.client.simGetGroundTruthEnvironment(vehicle_name="PhysXCar")
 
-        # self.client.simSetObjectScale("PhysXCar", airsim.Vector3r(1, 1.4, 1))
+        self.client.simSetObjectScale("PhysXCar", airsim.Vector3r(1, 1.4, 1))
 
         self.client.confirmConnection()
         self.client.enableApiControl(api_control)
@@ -57,7 +57,7 @@ class mSimulationCar:
         self.car_api_control_steer_flag = False
         self.car_api_steering_angle = 0
         self.car_steering_time = 0
-        self.arraytobesaved = np.zeros((185))
+        self.arraytobesaved = np.zeros(185)
         self.target_pointer_array = np.zeros((1, 50))
         self.possible_car_states = None
         self.target_location = [0, 0]
@@ -320,7 +320,7 @@ class mSimulationCar:
         self.mutex_Flag = False
 
     def parse_lidarData(self, data):
-        # reshape array of floats to array of [X,Y,Z]
+            # reshape array of floats to array of [X,Y,Z]
         points = np.array(data.point_cloud, dtype=np.dtype('f4'))
 
         points = np.reshape(points, (int(points.shape[0] / 3), 3))
@@ -338,6 +338,7 @@ class mSimulationCar:
             return np.ones(180) * self.lidar_range + np.random.normal(0, 0.08, (180))
         else:
             points = self.parse_lidarData(self.current_LidarData)
+            # we now have the location of the points
             all_X = points[:, 1]
             all_Y = points[:, 0]
             dist = np.sqrt(all_X * all_X + all_Y * all_Y)

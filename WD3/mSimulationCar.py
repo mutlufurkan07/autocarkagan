@@ -143,8 +143,12 @@ class mSimulationCar:
 
         # request current lidar data from unreal airsim and process the raw data
         self.current_LidarData = self.client.getLidarData()
-        # responses = self.client.simGetImages([airsim.ImageRequest("1", airsim.ImageType.DepthVis, False, False)])
-        # response = responses[0]
+        responses = self.client.simGetImages([airsim.ImageRequest("0", airsim.ImageType.DepthVis, False, False)])
+        response = responses[0]
+        img1d = np.fromstring(response.image_data_uint8, dtype=np.uint8)
+        img_rgb = img1d.reshape(response.height, response.width, 3)
+        cv2.imshow("ksldkas", img_rgb)
+
         self.flatten_lidar_data = self.processLidarTo180Deg(self.visualizeLidar_flatten)
 
         # get current car state from unreal and airsim and convert them to proper metrics(pos,speed,heading etc.)

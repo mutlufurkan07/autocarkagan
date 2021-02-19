@@ -5,8 +5,6 @@ import torch
 from Agent import Agent
 from mSimulationCar import mSimulationCar
 import collections
-from Memory import Memory
-
 
 if __name__ == "__main__":
     # Simulation params
@@ -31,9 +29,6 @@ if __name__ == "__main__":
     MAX_EPOCH = 5e6
     MAX_TIME = 50  # secs
     gamma = 0.995
-    tau = 0.01
-    actorlr = 1e-5
-    criticlr = 1e-4
     variance = 0.1
     action_dim = 1
     mem_size = 4e5
@@ -42,15 +37,15 @@ if __name__ == "__main__":
     state_dim = 245
     circle_num = 10
 
-
     # PPO Specific
-    hidden_dim = 64
+    hidden_dim1 = 400
+    hidden_dim2 = 300
     betas = (0.9, 0.999)
-    K_epochs = 40
+    K_epochs = 20
     eps_clip = 0.2
+    update_horizon = 256
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    memory = Memory()
     mCar = mSimulationCar()
     training_flag = True
 
@@ -61,11 +56,10 @@ if __name__ == "__main__":
     # mCar.createFolder() #call this to save the data to a text file ./data/....txt
     print("Starting")
 
-    agent = Agent(gamma=gamma,  lr = actorlr, action_std=std, K_epochs=K_epochs, state_dim=state_dim,
-        eps_clip=eps_clip, betas=betas, action_dim=action_dim, hidden_dim=hidden_dim)
-    # agent.load_models(70200, 31)
+    agent = Agent(gamma=gamma, lr=actorlr, action_std=std, K_epochs=K_epochs, state_dim=state_dim, eps_clip=eps_clip,
+                  betas=betas, action_dim=action_dim, hidden_dim1=hidden_dim1, hidden_dim2=hidden_dim2, device=device,
+                  update_horizon=update_horizon)
 
-    # agent.load_models(10800, 35)
     car_x = 0
     car_y = 0
 
@@ -102,7 +96,7 @@ if __name__ == "__main__":
             # check time punishment flag
             time_punishment_flag = (MAX_TIME < time.time() - curr_time)
 
-            agent_action, action_logprob = agent.action_selection(state_torch_tensor.float(), memory)
+            agent_action, action_logprob = agent.action_selection(state_torch_tensor.float())
 
             car_steering_old += agent_action / 10
             car_steering_old = min(car_steering_old, 0.5)
@@ -129,22 +123,27 @@ if __name__ == "__main__":
                 ####
 
             # update network
-            reward_tensor = torch.tensor([-0.075, current_cosine_reward / 2000, (isCollidedFlag or time_punishment_flag) * (-300), success * 600,
-                                          temp_circle_reward * 30, isClear_flag * -2])
-            # print(f"CCS: {current_cosine_reward}, TSR:  {temp_circle_reward*25},  ICR:{isClear_flag*-1}")
+            reward_tensor = torch.tensor(
+                [-0.075, current_cosine_reward / 2000, (isCollidedFlag or time_punishment_flag) * (-300), success * 600,
+                 temp_circle_reward * 30, isClear_flag * -2])
+
+            compound_reward = reward_tensor.sum()
 
             if training_flag:
-                memory.store(np.array(state_torch_tensor.cpu()), np.array(reward_tensor.cpu()),
-                agent_action, action_logprob.item(), isCollidedFlag)
-                agent.update(memory)
+                if tot_step % update_horizon == 0:
+                    agent.update()
+                    agent.memory.clear_memory()
+                else:
+                    agent.memory.store(s=state_torch_tensor.cpu(), a=agent_action, r=compound_reward, d=isCollidedFlag,
+                                 logprob=action_logprob.item())
             else:
                 time.sleep(0.003)
 
             # DONMEK KOTUDUR ve düz gitmek iyidir
             if np.abs(agent_action) < 0.25:
-                epoch_reward += reward_tensor.sum() + 2 * torch.tensor(1 - np.abs(agent_action))
+                epoch_reward += compound_reward + 2 * torch.tensor(1 - np.abs(agent_action))
             else:
-                epoch_reward += reward_tensor.sum() - 1 * torch.tensor(np.abs(agent_action))
+                epoch_reward += compound_reward - 1 * torch.tensor(np.abs(agent_action))
 
             step_len += 1
             # if time_current >= MAX_TIME or done or (success == 10):
@@ -153,13 +152,14 @@ if __name__ == "__main__":
                 avg_reward = sum(average_reward_list) / len(average_reward_list)
                 tot_step += step_len
                 average_success_list.append(success)
-                avg_success = sum(average_success_list) / len(average_success_list)
-                print(
-                    f"Episode: {epoch:5} , Reward: {epoch_reward.item():8.3f} , Avg Reward: {avg_reward.item():8.3f}  AvgSuccss: {avg_success*100:6.2f}%, Success: {success:2} , Step Len: {step_len:4}  , Total Steps: {tot_step:7}")
+                avg_success = sum(average_success_list) * 100 / len(average_success_list)
+                print(f"Episode: {epoch:5} , Reward: {epoch_reward.item():8.3f} , Avg Reward: {avg_reward.item():8.3f} "
+                      f"Avg Success: {avg_success:1f}%, Success: {success:2} , Step Len: {step_len:4}  , Total Steps: "
+                      f"{tot_step:7}")
 
                 mCar.randomly_initiate_states()
-                car_x = mCar.xx
-                car_y = mCar.yy
+                car_x = mCar.initial_x
+                car_y = mCar.initial_y
                 TARGET_POS_X = mCar.target_location[0]
                 TARGET_POS_Y = mCar.target_location[1]
 
@@ -174,7 +174,7 @@ if __name__ == "__main__":
                 # mCar.setVehiclePose(car_x, car_y , 0)
                 mCar.has_collided_flag = False
                 # time.sleep(0.1)
-                #print()
+                # print()
                 break
 
             # update for next step in the episode
