@@ -1,0 +1,43 @@
+{
+  "SeeDocsAt": "https://github.com/Microsoft/AirSim/blob/master/docs/settings_json.md",
+  "SettingsVersion": 1.2,
+  "SimMode": "Car",
+  "ClockSpeed": 5,
+  "SpeedUnitFactor": 1,
+  "SpeedUnitLabel": "m/s",
+  "ApiServerPort": 41451,
+  "Vehicles": {
+    "PhysXCar": {
+      "VehicleType": "PhysXCar",      
+      "DefaultVehicleState": "armed",
+      "AutoCreate": true,
+      "PawnPath": "",
+      "EnableCollisionPassthrogh": false,
+      "EnableCollisions": true,
+      "RC": {
+        "RemoteControlID": -1
+      },
+      "Sensors": {
+        "MyLidar2": {
+          "SensorType": 6,
+          "Enabled": true,
+          "Range": 32,
+          "NumberOfChannels": 1,
+          "PointsPerSecond": 4000,
+          "RotationPerSecond": 10,
+          "VerticalFOVUpper": 0,
+          "VerticalFOVLower": 0,
+          "X": -1.2,
+          "Y": 0,
+          "Z": -0.9,
+          "DrawDebugPoints": true,
+          "DataFrame": "SensorLocalFrame"
+        },
+        "Imu": {
+          "SensorType": 2,
+          "Enabled": true
+        }
+      }
+    }
+  }
+}
