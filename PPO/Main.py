@@ -39,7 +39,8 @@ if __name__ == "__main__":
 
     # PPO Specific
     hidden_dim1 = 400
-    hidden_dim2 = 300
+    hidden_dim2 = 400
+    hidden_dim3 = 300
     betas = (0.9, 0.999)
     K_epochs = 20
     eps_clip = 0.2
@@ -57,7 +58,7 @@ if __name__ == "__main__":
     print("Starting")
 
     agent = Agent(gamma=gamma, lr=actorlr, action_std=std, K_epochs=K_epochs, state_dim=state_dim, eps_clip=eps_clip,
-                  betas=betas, action_dim=action_dim, hidden_dim1=hidden_dim1, hidden_dim2=hidden_dim2, device=device,
+                  betas=betas, action_dim=action_dim, hidden_dim1=hidden_dim1, hidden_dim2=hidden_dim2, hidden_dim3=hidden_dim3, device=device,
                   update_horizon=update_horizon)
 
     car_x = 0
@@ -133,6 +134,7 @@ if __name__ == "__main__":
                 if tot_step % update_horizon == 0:
                     agent.update()
                     agent.memory.clear_memory()
+
                 else:
                     agent.memory.store(s=state_torch_tensor.cpu(), a=agent_action, r=compound_reward, d=isCollidedFlag,
                                  logprob=action_logprob.item())
@@ -146,15 +148,16 @@ if __name__ == "__main__":
                 epoch_reward += compound_reward - 1 * torch.tensor(np.abs(agent_action))
 
             step_len += 1
+            tot_step += 1
             # if time_current >= MAX_TIME or done or (success == 10):
             if time_punishment_flag or isCollidedFlag or success:
                 average_reward_list.append(epoch_reward)
                 avg_reward = sum(average_reward_list) / len(average_reward_list)
-                tot_step += step_len
+
                 average_success_list.append(success)
                 avg_success = sum(average_success_list) * 100 / len(average_success_list)
                 print(f"Episode: {epoch:5} , Reward: {epoch_reward.item():8.3f} , Avg Reward: {avg_reward.item():8.3f} "
-                      f"Avg Success: {avg_success:1f}%, Success: {success:2} , Step Len: {step_len:4}  , Total Steps: "
+                      f"Avg Success: {avg_success:.1f}%, Success: {success:2} , Step Len: {step_len:4}  , Total Steps: "
                       f"{tot_step:7}")
 
                 mCar.randomly_initiate_states()

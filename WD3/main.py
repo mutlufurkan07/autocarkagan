@@ -8,7 +8,7 @@ import collections
 
 if __name__ == "__main__":
     # Simulation params
-    action_duration = 0.01  # secs
+    action_duration = 0.02  # secs
     # NURİ BOMBASI
     TARGET_POS_X, TARGET_POS_Y = 0, 50
     target_initial_distance = np.sqrt((TARGET_POS_X ** 2) + (TARGET_POS_Y ** 2))
@@ -16,15 +16,15 @@ if __name__ == "__main__":
     std = 0.1
     noise_mag = 0.5
     max_action = 1  # max steering
-    experiment_id = 3
+    experiment_id = 30
 
     SUCCESS_RADIUS = 5  # 15m close to reward
     MAX_EPISODE = 5e6
     MAX_TIME = 50  # secs
     gamma = 0.995
     tau = 0.001
-    actorlr = 5e-4 # 1e-5 in *100 reward setting
-    criticlr = 5e-3  # 1e-4 in *100 reward setting
+    actorlr = 1e-5 # in *100 reward setting
+    criticlr = 1e-4 # in *100 reward setting
     variance = 0.1
     action_dim = 1
     mem_size = 5e5
@@ -32,7 +32,7 @@ if __name__ == "__main__":
     reward_dim = 6
     state_dim = 245
     circle_num = 10
-    wd3_beta = 0.75
+    wd3_beta = 0.70
     best_success_rate = 0.50
     target_noise_mag = 0.2
     max_allowed_steering = 0.6
@@ -115,7 +115,7 @@ if __name__ == "__main__":
             # update network
             reward_tensor = torch.tensor(
                 [-0.025, current_cosine_reward / 2000, (isCollidedFlag or time_punishment_flag) * (-300), success * 600,
-                 temp_circle_reward * 30, isClear_flag * -2]) / 10
+                 temp_circle_reward * 30, isClear_flag * -2])
             # print(f"CCS: {current_cosine_reward}, TSR:  {temp_circle_reward*25},  ICR:{isClear_flag*-1}")
 
             if training_flag:
@@ -127,9 +127,9 @@ if __name__ == "__main__":
 
             # DONMEK KOTUDUR ve düz gitmek iyidir
             if np.abs(agent_action) < 0.25:
-                epoch_reward += (reward_tensor.sum() + 2 * torch.tensor(1 - np.abs(agent_action))) / 10
+                epoch_reward += (reward_tensor.sum() + 2 * torch.tensor(1 - np.abs(agent_action)))
             else:
-                epoch_reward += (reward_tensor.sum() - 1 * torch.tensor(np.abs(agent_action))) / 10
+                epoch_reward += (reward_tensor.sum() - 1 * torch.tensor(np.abs(agent_action)))
 
             step_len += 1
             # if time_current >= MAX_TIME or done or (success == 10):

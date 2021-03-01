@@ -4,7 +4,7 @@ from torch.distributions import MultivariateNormal
 
 
 class ActorCritic(nn.Module):
-    def __init__(self, state_dim, hidden_dim1, hidden_dim2, action_dim, action_std):
+    def __init__(self, state_dim, hidden_dim1, hidden_dim2, hidden_dim3, action_dim, action_std):
         super(ActorCritic, self).__init__()
         # action mean range -1 to 1
         self.actor = nn.Sequential(
@@ -12,7 +12,9 @@ class ActorCritic(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim1, hidden_dim2),
             nn.ReLU(),
-            nn.Linear(hidden_dim2, action_dim),
+            nn.Linear(hidden_dim2, hidden_dim3),
+            nn.ReLU(),
+            nn.Linear(hidden_dim3, action_dim),
             nn.Tanh()
         )
         # critic
@@ -21,7 +23,9 @@ class ActorCritic(nn.Module):
             nn.ReLU(),
             nn.Linear(hidden_dim1, hidden_dim2),
             nn.ReLU(),
-            nn.Linear(hidden_dim2, 1)
+            nn.Linear(hidden_dim2, hidden_dim3),
+            nn.ReLU(),
+            nn.Linear(hidden_dim3, 1)
         )
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

@@ -37,7 +37,7 @@ class mSimulationCar:
         self.max_speed = 4  # 4m/s
         self.mFrame = np.zeros((256, 256, 1), dtype="uint8")
         self.mutex_Flag = False
-        self.control_timestamp = 0.01  # control car for every 40 msecs
+        self.control_timestamp = 0.02  # control car for every 40 msecs
         self.lidar_range = 32
         self.mCar_state = []
         self.RGB_image = []
@@ -407,7 +407,7 @@ class mSimulationCar:
         ratio1 = np.sqrt(target_pos_x**2 + target_pos_y**2)
         ratio2 = np.sqrt((self.target_location[0] - self.initial_x)**2 + (self.target_location[1] - self.initial_y)**2 )
         ratio = ratio1 / (ratio2 + 1e-8)
-        ratio = np.clip(1 - ratio, 0.2, 1)
+        ratio = np.clip(1 - ratio, 0.5, 1)
         if (-180 < int(target_relative_theta) < -83):
             target_array[0:5] = np.ones((5,)) * ratio
         elif (81 < int(target_relative_theta) < 181):
