@@ -10,7 +10,7 @@ import os
 
 class Agent:
     def __init__(self, gamma, tau, actorlr, criticlr, std, action_dim, mem_size, batch_size, state_dim, reward_dim,
-                 noise_mag, max_action, training_or_validation, beta, target_noise_mag, experiment_id):
+                 max_action, training_or_validation, beta, target_noise_mag, experiment_id):
 
         self.path = "model_params_wd3/" + str(experiment_id)
         if not os.path.exists(self.path):
@@ -22,27 +22,26 @@ class Agent:
         self.tau = tau
         self.batch_size = batch_size
         self.curr_reward = 0
-        self.noise_mag = noise_mag
         self.beta = beta
         self.max_action = max_action
 
-        self.actor = ActorNetwork(input_dims=state_dim, input_out=512, layer1_dims=400, layer2_dims=400, layer3_dims=300,
+        self.actor = ActorNetwork(input_dims=state_dim, input_out=200, layer1_dims=128, layer2_dims=64, layer3_dims=64,
                                   action_space=action_dim)
-        self.actor_target = ActorNetwork(input_dims=state_dim, input_out=512, layer1_dims=400, layer2_dims=400,
-                                         layer3_dims=300, action_space=action_dim)
+        self.actor_target = ActorNetwork(input_dims=state_dim, input_out=200, layer1_dims=128, layer2_dims=64,
+                                         layer3_dims=64, action_space=action_dim)
         self.actor_target.load_state_dict(self.actor.state_dict())
 
-        self.critic1 = CriticNetwork(input_dims=state_dim, action_dims=action_dim, input_out=400, layer1_dims=300,
-                                     layer2_dims=300)
-        self.critic1_target = CriticNetwork(input_dims=state_dim, action_dims=action_dim, input_out=400,
-                                            layer1_dims=300, layer2_dims=300)
+        self.critic1 = CriticNetwork(input_dims=state_dim, action_dims=action_dim, input_out=200, layer1_dims=64,
+                                     layer2_dims=64)
+        self.critic1_target = CriticNetwork(input_dims=state_dim, action_dims=action_dim, input_out=200,
+                                            layer1_dims=64, layer2_dims=64)
         self.critic1.load_state_dict(self.critic1_target.state_dict())
 
-        self.critic2 = CriticNetwork(input_dims=state_dim, action_dims=action_dim, input_out=400, layer1_dims=300,
-                                     layer2_dims=300)
-        self.critic2_target = CriticNetwork(input_dims=state_dim, action_dims=action_dim, input_out=400,
-                                            layer1_dims=300,
-                                            layer2_dims=300)
+        self.critic2 = CriticNetwork(input_dims=state_dim, action_dims=action_dim, input_out=200, layer1_dims=64,
+                                     layer2_dims=64)
+        self.critic2_target = CriticNetwork(input_dims=state_dim, action_dims=action_dim, input_out=200,
+                                            layer1_dims=64,
+                                            layer2_dims=64)
         self.critic2.load_state_dict(self.critic2_target.state_dict())
 
         self.actor_optim = optim.Adam(params=self.actor.parameters(), lr=actorlr)
@@ -64,7 +63,7 @@ class Agent:
         self.actor_update_frequency = 2
 
     def add_noise(self):
-        noise = self.noise_mag * np.random.normal(0, self.std, self.action_dim)
+        noise = np.random.normal(0, self.std, self.action_dim)
         noise = torch.tensor(noise).unsqueeze(0)
         return noise
 
