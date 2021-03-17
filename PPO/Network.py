@@ -4,28 +4,29 @@ from torch.distributions import MultivariateNormal
 
 
 class ActorCritic(nn.Module):
-    def __init__(self, state_dim, hidden_dim1, hidden_dim2, hidden_dim3, action_dim, action_std):
+    def __init__(self, state_dim, hidden_actor_dim1, hidden_actor_dim2, hidden_actor_dim3, hidden_critic_dim1,
+                  hidden_critic_dim2,hidden_critic_dim3, action_dim, action_std):
         super(ActorCritic, self).__init__()
         # action mean range -1 to 1
         self.actor = nn.Sequential(
-            nn.Linear(state_dim, hidden_dim1),
+            nn.Linear(state_dim, hidden_actor_dim1),
             nn.ReLU(),
-            nn.Linear(hidden_dim1, hidden_dim2),
+            nn.Linear(hidden_actor_dim1, hidden_actor_dim2),
             nn.ReLU(),
-            nn.Linear(hidden_dim2, hidden_dim3),
+            nn.Linear(hidden_actor_dim2, hidden_actor_dim3),
             nn.ReLU(),
-            nn.Linear(hidden_dim3, action_dim),
+            nn.Linear(hidden_actor_dim3, action_dim),
             nn.Tanh()
         )
         # critic
         self.critic = nn.Sequential(
-            nn.Linear(state_dim, hidden_dim1),
+            nn.Linear(state_dim, hidden_critic_dim1),
             nn.ReLU(),
-            nn.Linear(hidden_dim1, hidden_dim2),
+            nn.Linear(hidden_critic_dim1, hidden_critic_dim2),
             nn.ReLU(),
-            nn.Linear(hidden_dim2, hidden_dim3),
+            nn.Linear(hidden_critic_dim2, hidden_critic_dim3),
             nn.ReLU(),
-            nn.Linear(hidden_dim3, 1)
+            nn.Linear(hidden_critic_dim3, 1)
         )
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -57,3 +58,6 @@ class ActorCritic(nn.Module):
         state_value = self.critic(state)
 
         return action_logprobs, torch.squeeze(state_value), dist_entropy
+
+    def state_evaluate(self,state):
+        return self.critic(state)

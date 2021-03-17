@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/../DDPG/.idea/DDPG.iml" filepath="$PROJECT_DIR$/../DDPG/.idea/DDPG.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/PPO.iml" filepath="$PROJECT_DIR$/.idea/PPO.iml" />
     </modules>
   </component>

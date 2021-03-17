@@ -6,7 +6,8 @@ import os
 
 
 class Agent:
-    def __init__(self, state_dim, hidden_dim1, hidden_dim2, hidden_dim3, action_dim, action_std, lr, betas, gamma, K_epochs,
+    def __init__(self, state_dim, hidden_actor_dim1, hidden_actor_dim2, hidden_actor_dim3, hidden_critic_dim1,
+                  hidden_critic_dim2,hidden_critic_dim3, action_dim, action_std, lr, betas, gamma, K_epochs,
                  eps_clip, update_horizon, device):
         self.lr = lr
         self.betas = betas
@@ -16,10 +17,12 @@ class Agent:
         self.K_epochs = K_epochs
         self.memory = Memory(horizon=update_horizon, state_dim=state_dim, action_dim=action_dim)
 
-        self.policy = ActorCritic(state_dim, hidden_dim1, hidden_dim2, hidden_dim3, action_dim, action_std).to(device)
+        self.policy = ActorCritic(state_dim, hidden_actor_dim1, hidden_actor_dim2, hidden_actor_dim3, hidden_critic_dim1,
+                  hidden_critic_dim2,hidden_critic_dim3, action_dim, action_std).to(device)
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr, betas=betas)
 
-        self.policy_old = ActorCritic(state_dim, hidden_dim1, hidden_dim2, hidden_dim3, action_dim, action_std).to(device)
+        self.policy_old = ActorCritic(state_dim, hidden_actor_dim1, hidden_actor_dim2, hidden_actor_dim3, hidden_critic_dim1,
+                  hidden_critic_dim2,hidden_critic_dim3, action_dim, action_std).to(device)
         self.policy_old.load_state_dict(self.policy.state_dict())
 
         self.critic_loss = nn.MSELoss()
@@ -30,6 +33,7 @@ class Agent:
         return action.squeeze(0).cpu().numpy(), log_prob.cpu()
 
     def update(self):
+        print(f"UPDATED!!!!!!!")
 
         old_states, old_actions, rews, old_logprobs, terminals = self.memory.sample()
 
@@ -69,6 +73,9 @@ class Agent:
 
         # Copy new weights into old policy:
         self.policy_old.load_state_dict(self.policy.state_dict())
+
+    def state_value(self, state):
+        return self.policy_old.state_evaluate(state)
 
     def save_models(self, episode, ID):
         if not os.path.exists("model_params_ppo"):

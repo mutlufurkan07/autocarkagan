@@ -18,7 +18,7 @@ import torch
 class mSimulationCar:
     def __init__(self, api_control=True):
 
-        self.client = airsim.CarClient(port=41451)
+        self.client = airsim.CarClient()
         # ground_truth_env = self.client.simGetGroundTruthEnvironment(vehicle_name="PhysXCar")
 
         self.client.simSetObjectScale("PhysXCar", airsim.Vector3r(1, 1.4, 1))
@@ -34,16 +34,15 @@ class mSimulationCar:
         self.current_speed = 0
         self.max_throttle = 5
         self.max_brake = 1
-        self.max_speed = 4  # 4m/s
+        self.max_speed = 3  # 3m/s
         self.mFrame = np.zeros((256, 256, 1), dtype="uint8")
         self.mutex_Flag = False
-        self.control_timestamp = 0.025  # control car for every 40 msecs
-        self.lidar_range = 32
+        self.lidar_range = 40
         self.mCar_state = []
         self.RGB_image = []
         self.mCar_pos = []
         self.mCar_orientation = []
-        self.current_LidarData = []
+        self.current_LidarData = None
         self.lidar_data_buffer = []
         self.flatten_lidar_data = []
         self.timeStampsOfPosandOrientation = []
@@ -73,7 +72,6 @@ class mSimulationCar:
 
     def createFolder(self):
         file_index = 0
-
         current_dir = self.data_dir + "/" + str(file_index) + ".txt"
 
         while os.path.isfile(current_dir):
@@ -87,7 +85,7 @@ class mSimulationCar:
         # print("Saved current state......")
 
     def neural_network_output(self, current_t, pos_x_value, pos_y_value, orientation_euler_z, collision_Flag):
-        self.arraytobesaved = np.zeros((185))
+        self.arraytobesaved = np.zeros(185)
         curr_timestamp = np.round(current_t - self.starting_time, 6)
         curr_pos_x = np.round(pos_x_value, 3)
         curr_pos_y = np.round(pos_y_value, 3)
@@ -121,30 +119,25 @@ class mSimulationCar:
         # self.setVehiclePose(0, 0, 90)
         self.initial_x = self.possible_car_states[random_index, 0]
         self.initial_y = self.possible_car_states[random_index, 1]
-        # print(f"Vehicle Position : {self.possible_car_states[random_index, 0]} , {self.possible_car_states[random_index, 1]} ")
+        # print(f"Vehicle Position : {self.possible_car_states[random_index, 0]} ,"
+        #     f" {self.possible_car_states[random_index, 1]} ")
         target_random_index = random.randint(0, len(self.possible_car_states) - 1)
         if random_index == target_random_index:
             target_random_index -= 1
         self.target_location = [self.possible_car_states[target_random_index, 0],
                                 self.possible_car_states[target_random_index, 1]]
 
-    def arrow_key_control(self, bool_flag):
-        self.mSensorControllerThread = threading.Thread(target=self.collect_peripheralData, daemon=True)
-        self.mSensorControllerThread.start()
-        time.sleep(1)
-
-        # dont call from outside class
-
     def collect_peripheralData(self):
-        # time.sleep(0.5)
-
-        cv2.imshow("Arow", self.mFrame)
         cv2.waitKey(1)
 
         # request current lidar data from unreal airsim and process the raw data
         self.current_LidarData = self.client.getLidarData()
-        # responses = self.client.simGetImages([airsim.ImageRequest("1", airsim.ImageType.DepthVis, False, False)])
+        # responses = self.client.simGetImages([airsim.ImageRequest("0", airsim.ImageType.DepthVis, False, False)])
         # response = responses[0]
+        # img1d = np.fromstring(response.image_data_uint8, dtype=np.uint8)
+        # img_rgb = img1d.reshape(response.height, response.width, 3)
+        # cv2.imshow("ksldkas", img_rgb)
+
         self.flatten_lidar_data = self.processLidarTo180Deg(self.visualizeLidar_flatten)
 
         # get current car state from unreal and airsim and convert them to proper metrics(pos,speed,heading etc.)
@@ -265,62 +258,23 @@ class mSimulationCar:
         self.car_controls.steering = 0
         self.client.setCarControls(self.car_controls)
 
-    def go_forward(self, mtime):  # time in secs
-        self.mutex_Flag = True
-        start_timeStamp = time.time()
-        while (time.time() - start_timeStamp < mtime):
-            # print("Current speed",self.current_speed)
-            if (self.current_speed < self.max_speed):
-                self.car_controls.throttle = self.max_throttle
-                self.client.setCarControls(self.car_controls)
-            else:
-                self.reset_car_controls()
-            time.sleep(0.01)
-        self.reset_car_controls()
-        self.mutex_Flag = False
-
-    def go_back(self, mtime):  # time in secs
-        self.mutex_Flag = True
-        start_timeStamp = time.time()
-        while (time.time() - start_timeStamp < mtime):
-            # print("Current speed",self.current_speed)
-            if (self.current_speed < self.max_speed):
-                self.car_controls.throttle = -self.max_throttle
-                self.client.setCarControls(self.car_controls)
-            else:
-                self.reset_car_controls()
-            time.sleep(0.01)
-        self.reset_car_controls()
-        self.mutex_Flag = False
-
     def go_steer(self, normalized_steering_angle, mtime):
         self.mutex_Flag = True
-        start_timeStamp = time.time()
-        while (time.time() - start_timeStamp < mtime):
-            self.car_controls.steering = normalized_steering_angle
-            # self.client.setCarControls(self.car_controls)
-            if (self.current_speed < self.max_speed):
-                self.car_controls.throttle = self.max_throttle
-                self.client.setCarControls(self.car_controls)
-            else:
-                self.car_controls.throttle = 0
-                self.client.setCarControls(self.car_controls)
-            time.sleep(0.01)
+
+        self.car_controls.steering = normalized_steering_angle
+
+        if self.current_speed < self.max_speed:
+            self.car_controls.throttle = self.max_throttle
+            self.client.setCarControls(self.car_controls)
+        else:
+            self.car_controls.throttle = 0
+            self.client.setCarControls(self.car_controls)
+
         # self.reset_car_controls()
         self.mutex_Flag = False
 
-    def go_brake(self, mtime):
-        self.mutex_Flag = True
-        start_timeStamp = time.time()
-        while (time.time() - start_timeStamp < mtime):
-            self.car_controls.brake = self.max_brake
-            self.client.setCarControls(self.car_controls)
-            time.sleep(0.01)
-        self.reset_car_controls()
-        self.mutex_Flag = False
-
     def parse_lidarData(self, data):
-            # reshape array of floats to array of [X,Y,Z]
+        # reshape array of floats to array of [X,Y,Z]
         points = np.array(data.point_cloud, dtype=np.dtype('f4'))
 
         points = np.reshape(points, (int(points.shape[0] / 3), 3))
@@ -338,7 +292,6 @@ class mSimulationCar:
             return np.ones(180) * self.lidar_range + np.random.normal(0, 0.08, (180))
         else:
             points = self.parse_lidarData(self.current_LidarData)
-            # we now have the location of the points
             all_X = points[:, 1]
             all_Y = points[:, 0]
             dist = np.sqrt(all_X * all_X + all_Y * all_Y)
@@ -386,7 +339,7 @@ class mSimulationCar:
                     if point_y < 400:
                         frame = cv2.circle(frame, (points[ii, 1], point_y), 5, (127, 0, 0), -1)
                 frame = cv2.circle(frame, (400, 400), 5, (50, 0, 0), 2)
-                cv2.imshow("Car Lidar_opencv", frame)
+                # cv2.imshow("Car Lidar_opencv", frame)
                 # cv2.waitKey(1)
 
         return self.current_LidarData
@@ -404,17 +357,17 @@ class mSimulationCar:
         ratio1 = np.sqrt(target_pos_x**2 + target_pos_y**2)
         ratio2 = np.sqrt((self.target_location[0] - self.initial_x)**2 + (self.target_location[1] - self.initial_y)**2 )
         ratio = ratio1 / (ratio2 + 1e-8)
-        ratio = np.clip(1 - ratio, 0.2, 1)
-        if (-180 < int(target_relative_theta) < -83):
+        ratio = np.clip(1 - ratio, 0.5, 1)
+        if -180 < int(target_relative_theta) < -83:
             target_array[0:5] = np.ones((5,)) * ratio
-        elif (81 < int(target_relative_theta) < 181):
+        elif 81 < int(target_relative_theta) < 181:
             target_array[-5:] = np.ones((5,)) * ratio
         else:
             target_array[int((target_relative_theta) // 3) + 28:int((target_relative_theta) // 3) + 33] = np.ones(
                 (5,)) * ratio
 
 
-        target_array += np.random.normal(0, 0.03, target_array.shape)
+        # target_array += np.random.normal(0, 0.03, target_array.shape)
         target_array[np.where(target_array > 1)[0]] = 1
         cv_arr = target_array.reshape((60, 1))
         cv_arr = cv2.resize(cv_arr, (80, 360))
@@ -489,9 +442,9 @@ class mSimulationCar:
 
         state_tensor = torch.from_numpy(state_numpy)
 
-        middle_lidar_point = car_pos_lidar_data[64:124]
+        middle_lidar_point = car_pos_lidar_data[74:114]
 
-        is_clear = (np.max(middle_lidar_point))
+        is_clear = np.max(middle_lidar_point)
         """
         validation = True
         if not validation:
