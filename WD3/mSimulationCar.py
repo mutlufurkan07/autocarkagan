@@ -13,10 +13,11 @@ import cv2
 import matplotlib.pyplot as plt
 import math
 import torch
+from PIL import Image
 
 
 class mSimulationCar:
-    def __init__(self, api_control=True):
+    def __init__(self, lidar_dim, api_control=True):
 
         self.client = airsim.CarClient()
         # ground_truth_env = self.client.simGetGroundTruthEnvironment(vehicle_name="PhysXCar")
@@ -56,7 +57,8 @@ class mSimulationCar:
         self.car_api_control_steer_flag = False
         self.car_api_steering_angle = 0
         self.car_steering_time = 0
-        self.arraytobesaved = np.zeros(185)
+        self.lidar_dim = lidar_dim
+        self.arraytobesaved = np.zeros(self.lidar_dim + 5)
         self.target_pointer_array = np.zeros((1, 50))
         self.possible_car_states = None
         self.target_location = [0, 0]
@@ -85,18 +87,17 @@ class mSimulationCar:
         # print("Saved current state......")
 
     def neural_network_output(self, current_t, pos_x_value, pos_y_value, orientation_euler_z, collision_Flag):
-        self.arraytobesaved = np.zeros(185)
         curr_timestamp = np.round(current_t - self.starting_time, 6)
         curr_pos_x = np.round(pos_x_value, 3)
         curr_pos_y = np.round(pos_y_value, 3)
         curr_euler_orientation_z = np.round(orientation_euler_z / np.pi * 180, 2)
-        curr_lidar_d = self.flatten_lidar_data / 255  # normalize btw [0,1]
+
 
         self.arraytobesaved[0] = curr_timestamp
         self.arraytobesaved[1] = curr_pos_x
         self.arraytobesaved[2] = curr_pos_y
         self.arraytobesaved[3] = curr_euler_orientation_z
-        self.arraytobesaved[4:len(self.arraytobesaved) - 1] = curr_lidar_d
+        self.arraytobesaved[4:len(self.arraytobesaved) - 1] = (self.flatten_lidar_data / 255)
         self.arraytobesaved[len(self.arraytobesaved) - 1] = collision_Flag
         return self.arraytobesaved
 
@@ -132,6 +133,10 @@ class mSimulationCar:
 
         # request current lidar data from unreal airsim and process the raw data
         self.current_LidarData = self.client.getLidarData()
+
+        # self.depth_data = self.getScreenDepthVis()
+
+        # self.get_semantics()
         # responses = self.client.simGetImages([airsim.ImageRequest("0", airsim.ImageType.DepthVis, False, False)])
         # response = responses[0]
         # img1d = np.fromstring(response.image_data_uint8, dtype=np.uint8)
@@ -238,19 +243,38 @@ class mSimulationCar:
         self.mutex_Flag = False
         return car_state
 
-    def emergency_stop(self, mtime):
-        self.mutex_Flag = True
-        start_timeStamp = time.time()
+    def get_semantics(self):
+        response = self.client.simGetImages([airsim.ImageRequest(0, airsim.ImageType.Segmentation, False, False)])[0]
 
-        while (time.time() - start_timeStamp < mtime):
-            self.car_controls.throttle = 0
-            self.car_controls.brake = 10
-            self.car_controls.steering = 0
-            self.client.setCarControls(self.car_controls)
-            time.sleep(0.1)
+        img1d = np.fromstring(response.image_data_uint8, dtype=np.uint8)  # get numpy array
+        img_rgb = img1d.reshape(response.height, response.width, 3)  # reshape array to 3 channel image array H X W X 3
 
-        self.reset_car_controls()
-        self.mutex_Flag = False
+        cv2.imshow("segmentation", img_rgb)
+        return img_rgb
+
+    def getScreenDepthVis(self):
+
+        responses = self.client.simGetImages([airsim.ImageRequest(0, airsim.ImageType.DepthPerspective, True, False)])
+        img1d = np.array(responses[0].image_data_float, dtype=np.float)
+        img1d = 255 / np.maximum(np.ones(img1d.size), img1d)
+        img2d = np.reshape(img1d, (responses[0].height, responses[0].width))
+        img2d = img2d[5 * responses[0].height//10: 6 * responses[0].height//10, :]
+
+        image = cv2.equalizeHist(img2d.astype(np.uint8))
+        mean_image = np.mean(img2d, 0)
+
+
+        # image1 = np.invert(np.array(Image.fromarray(img2d.astype(np.uint8), mode='L')))
+        # factor = 2
+        # maxIntensity = 255.0  # depends on dtype of image data
+        #
+        # # Decrease intensity such that dark pixels become much darker, bright pixels become slightly dark
+        # newImage1 = (maxIntensity) * (image1 / maxIntensity) ** factor
+        # newImage1 = np.array(newImage1, dtype=np.uint8)
+        # cv2.imshow("Other", newImage1)
+        # cv2.waitKey(0)
+
+        return mean_image
 
     def reset_car_controls(self):
         self.car_controls.throttle = 0
@@ -289,7 +313,7 @@ class mSimulationCar:
 
         if len(self.current_LidarData.point_cloud) < 3:
             print("\tNo points received from Lidar data")
-            return np.ones(180) * self.lidar_range + np.random.normal(0, 0.08, (180))
+            return np.ones(self.lidar_dim) * self.lidar_range + np.random.normal(0, 0.08, (self.lidar_dim))
         else:
             points = self.parse_lidarData(self.current_LidarData)
             all_X = points[:, 1]
@@ -302,8 +326,10 @@ class mSimulationCar:
             ret_arr = np.flip(vector)
             ret_arr = 255 - ((ret_arr / self.lidar_range) * 255)
             ret_arr += np.random.normal(0, 0.1, ret_arr.shape)
+            ret_arr = ret_arr[(180-self.lidar_dim)//2:180-(180-self.lidar_dim)//2]
+
             if visualize:
-                cv_arr = np.zeros((80, 180), np.uint8)
+                cv_arr = np.zeros((80, self.lidar_dim), np.uint8)
 
                 for ii in range(80):
                     cv_arr[ii, :] = ret_arr
@@ -422,54 +448,31 @@ class mSimulationCar:
         return (np.dot(heading_vec, target_vector)) / (
                 np.linalg.norm(target_vector) * np.linalg.norm(heading_vec))  # reward_input
 
-    def take_action_and_get_current_lidar_and_targetArray(self, TARGET_POS_X, TARGET_POS_Y, target_initial_distance):
+    def get_current_lidar_and_targetArray(self, TARGET_POS_X, TARGET_POS_Y, target_initial_distance):
         car_pos_lidar_data = self.take_action_and_collect_data()
+
         curr_x = car_pos_lidar_data[1]
         curr_y = car_pos_lidar_data[2]
         self.currpos = [curr_x, curr_y]
+
         curr_heading = car_pos_lidar_data[3]
         isCollidedFlag = car_pos_lidar_data[len(car_pos_lidar_data) - 1]
-        lidar_data_sampled = car_pos_lidar_data[
-                             4:len(car_pos_lidar_data) - 1]  # [np.arange(1,180,3)] #lidar data sampled from 180 to 60
+
+        lidar_data_sampled = car_pos_lidar_data[4:len(car_pos_lidar_data) - 1]
+
         lidar_right = lidar_data_sampled[3:]
-        lidar_left = lidar_data_sampled[:177]
-        lidar_data_sampled[:177] = np.maximum.reduce([lidar_data_sampled[:177], lidar_right, lidar_left])
+        lidar_left = lidar_data_sampled[:self.lidar_dim-3]
+
+        lidar_data_sampled[:self.lidar_dim-3] = np.maximum.reduce([lidar_data_sampled[:self.lidar_dim-3], lidar_right, lidar_left])
+
         distance_to_target = np.sqrt((TARGET_POS_X - curr_x) ** 2 + (TARGET_POS_Y - curr_y) ** 2)
         car_target_array_data = self.createTargetArray(TARGET_POS_X - curr_x, TARGET_POS_Y - curr_y, curr_heading,
                                                        distance_to_target / target_initial_distance)
 
         state_numpy = np.append(lidar_data_sampled, car_target_array_data)
-
         state_tensor = torch.from_numpy(state_numpy)
 
-        middle_lidar_point = car_pos_lidar_data[74:114]
-
+        middle_lidar_point = car_pos_lidar_data[54:134]
         is_clear = np.max(middle_lidar_point)
-        """
-        validation = True
-        if not validation:
-            new_is_collided = np.where(lidar_data_sampled > 0.905)
-            if new_is_collided[0].size == 0:
-                isCollidedFlag = False or isCollidedFlag
-            else:
-                isCollidedFlag = True
-        """
-
-        # closest_point = min( 1 - middle_lidar_point)
-        # is_clear = closest_point < 0.2
 
         return state_numpy, state_tensor, curr_x, curr_y, curr_heading, isCollidedFlag, is_clear
-
-    def choose_steering_angle_from_agent(self, act):
-        new_act = 0
-        if act == 0:
-            new_act = -0.75
-        elif act == 1:
-            new_act = 0
-        elif act == 2:
-            new_act = 0.75
-        return new_act
-
-    def check_car_region_reward(self):
-
-        return

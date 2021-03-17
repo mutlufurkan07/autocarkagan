@@ -9,6 +9,7 @@ class Memory():
         self.new_state_memory = torch.zeros((mem_size, state_dim) , dtype= torch.float32)
         self.action_memory = torch.zeros((mem_size, action_dim), dtype= torch.float32)
         self.reward_memory = torch.zeros((mem_size, reward_dim), dtype= torch.float32)
+        # self.depth_memory = torch.zeros((mem_size, depth_dim), dtype=torch.float32)
         self.terminal_memory = torch.zeros(mem_size)
         self.mem_full = False
         self.mem_index = 0
@@ -19,6 +20,7 @@ class Memory():
             self.mem_full = True
         else:
             index = self.mem_index
+        #self.depth_memory[index] = depth
         self.state_memory[index] = state
         self.new_state_memory[index] = new_state
         self.action_memory[index] = action
@@ -37,7 +39,8 @@ class Memory():
         action_batch = self.action_memory[batch_index]
         reward_batch = self.reward_memory[batch_index]
         terminal_batch = self.terminal_memory[batch_index]
+        # depth = self.depth_memory[batch_index]
 
-        return state_batch, new_state_batch, action_batch, reward_batch, terminal_batch
+        return state_batch, new_state_batch, action_batch, reward_batch, terminal_batch #, depth
 
 
